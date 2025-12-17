@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nanometric Grass Interaction</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        #info {
+            position: absolute; top: 10px; width: 100%; text-align: center; color: #fff;
+            pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); z-index: 10;
+        }
+    </style>
+    <!-- Import Map for modular loading without bundlers -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://esm.sh/three@0.160.0",
+                "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="info">
+        Quest 2/3 Hand Tracking Grass System<br>
+        Enter VR to interact. Pinch to pluck.
+    </div>
+    <script type="module" src="./main.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
