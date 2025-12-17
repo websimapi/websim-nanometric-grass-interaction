@@ -213,6 +213,9 @@ export const positionShader = `
 
 // RENDER VERTEX SHADER
 export const grassVertexShader = `
+    attribute mat4 instanceMatrix;
+    attribute vec3 instanceColor;
+
     uniform sampler2D texturePos;
     uniform float time;
     
@@ -277,23 +280,37 @@ export const grassFragmentShader = `
         vec3 color = mix(colorBase, colorTip, vBend);
 
         // Stress visualization: Lighter where bent
-        color = mix(color, vec3(0.6, 0.7, 0.2), vStress * 0.5);
+        color = mix(color, vec3(1.0, 1.0, 0.5), vStress * 0.8);
 
-        // Fake Lighting
+        // Lighting
         vec3 normal = normalize(cross(dFdx(vWorldPosition), dFdy(vWorldPosition)));
-        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
+        vec3 lightDir = normalize(sunPosition);
         
+        // Diffuse
         float diff = max(dot(normal, lightDir), 0.0);
         
-        // Subsurface Scattering Approximation
-        // If light is behind grass, it glows
+        // Ambient
+        vec3 ambient = vec3(0.2);
+
+        // Subsurface Scattering (Backlighting)
         vec3 viewDir = normalize(cameraPosition - vWorldPosition);
         float sss = max(dot(viewDir, -lightDir), 0.0);
-        sss = pow(sss, 2.0) * 0.6; // Focus the glow
-        // SSS is stronger at the tip (thinner)
+        sss = pow(sss, 4.0) * 1.5; 
         sss *= vBend; 
 
-        vec3 finalColor = color * (0.3 + diff * 0.7) + (vec3(0.8, 0.9, 0.3) * sss);
+        // Specular
+        vec3 halfVec = normalize(lightDir + viewDir);
+        float spec = max(dot(normal, halfVec), 0.0);
+        spec = pow(spec, 32.0) * 0.2;
+
+        vec3 lighting = ambient + (vec3(1.0) * diff) + (vec3(0.9, 1.0, 0.2) * sss) + spec;
+        
+        vec3 finalColor = color * lighting;
+
+        // Distance fog
+        float dist = length(cameraPosition - vWorldPosition);
+        float fogFactor = smoothstep(10.0, 30.0, dist);
+        finalColor = mix(finalColor, vec3(0.125, 0.188, 0.25), fogFactor);
 
         gl_FragColor = vec4(finalColor, 1.0);
     }

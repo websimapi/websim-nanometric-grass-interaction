@@ -83,8 +83,9 @@ export class GrassSystem {
             uniforms: {
                 texturePos: { value: null },
                 time: { value: 0 },
-                colorBase: { value: new THREE.Color(0x003300) }, // Dark Green
-                colorTip: { value: new THREE.Color(0x55aa00) }   // Lime Green
+                colorBase: { value: new THREE.Color(0x004400) }, // Slightly brighter Green
+                colorTip: { value: new THREE.Color(0x66bb00) },   // Vivid Lime Green
+                sunPosition: { value: new THREE.Vector3(3, 10, 5) }
             },
             side: THREE.DoubleSide
         });

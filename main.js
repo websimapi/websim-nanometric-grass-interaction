@@ -13,8 +13,8 @@ animate();
 function init() {
     // 1. Scene Setup
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111111);
-    scene.fog = new THREE.Fog(0x111111, 2, 10);
+    scene.background = new THREE.Color(0x203040);
+    scene.fog = new THREE.Fog(0x203040, 2, 20);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50);
     camera.position.set(0, 1.6, 2);
@@ -39,13 +39,17 @@ function init() {
     document.body.appendChild(VRButton.createButton(renderer));
 
     // 5. Floor (Reference)
-    const floorGeo = new THREE.CircleGeometry(4, 32);
+    const floorGeo = new THREE.CircleGeometry(5, 64);
     const floorMat = new THREE.MeshStandardMaterial({ 
-        color: 0x0a1a0a, roughness: 1.0 
+        color: 0x050a05, roughness: 0.9 
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
+
+    const grid = new THREE.GridHelper(10, 20, 0x444444, 0x111111);
+    grid.position.y = 0.01;
+    scene.add(grid);
 
     // 6. Systems
     handInput = new HandInput(renderer, scene);
