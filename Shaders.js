@@ -214,7 +214,7 @@ export const positionShader = `
 // RENDER VERTEX SHADER
 export const grassVertexShader = `
     attribute mat4 instanceMatrix;
-    attribute vec3 instanceColor;
+    attribute vec3 simUv; // Changed from instanceColor to avoid collisions
 
     uniform sampler2D texturePos;
     uniform float time;
@@ -222,15 +222,13 @@ export const grassVertexShader = `
     varying vec2 vUv;
     varying float vBend;
     varying vec3 vWorldPosition;
-    varying float vStress; // Calculate stress for color change
+    varying float vStress;
+    varying vec3 vNormal;
 
     void main() {
         vUv = uv;
         
-        // Read simulation data
-        // instanceMatrix is handled by Three.js, but we need the UV for the simulation texture
-        // We will pass the simulation UV as a per-instance attribute
-        vec4 simData = texture2D(texturePos, instanceColor.xy); // We reuse instanceColor to pass sim UVs
+        vec4 simData = texture2D(texturePos, simUv.xy);
         
         vec2 bend = simData.rg;
         float height = simData.b;
@@ -238,28 +236,34 @@ export const grassVertexShader = `
         // Deform geometry
         vec3 pos = position;
         
-        // Parabolic bend based on Y (height)
-        float t = pos.y / 0.5; // Geometry is 0.5 high base
+        float t = pos.y / 0.5; // Normalized height (0 to 1)
         
         // Scale to simulated height
         pos.y *= (height / 0.5); 
 
         // Apply bend curve: quadratic curve
-        // x' = x + bendX * t^2
         pos.x += bend.x * (t * t);
         pos.z += bend.y * (t * t);
 
-        // Adjust Y to preserve length approximation (cos theta)
-        // Simple approximation: as it bends out, it drops down
+        // Length preservation approx
         float bendAmt = length(bend * t * t);
-        pos.y -= bendAmt * 0.2; 
+        pos.y -= bendAmt * 0.3; 
 
-        vBend = t; // 0 at bottom, 1 at top
-        vStress = length(bend) / height; // How bent is it?
+        vBend = t;
+        vStress = length(bend) / height;
 
+        // Calculate Smooth Normal based on bend
+        // Base normal is (0,1,0), bent normal tilts towards bend
+        vec3 bentNormal = normalize(vec3(bend.x, 2.0, bend.y)); 
+        // Mix with instance rotation logic if needed, but for simple grass:
+        // We actually want to rotate this normal by the instance matrix rotation
+        
         vec4 worldPos = instanceMatrix * vec4(pos, 1.0);
         vWorldPosition = worldPos.xyz;
         
+        // Transform normal by instance matrix (rotation part only)
+        vNormal = normalize(mat3(instanceMatrix) * bentNormal);
+
         gl_Position = projectionMatrix * modelViewMatrix * vec4(worldPos.xyz, 1.0);
     }
 `;
@@ -270,6 +274,7 @@ export const grassFragmentShader = `
     varying float vBend;
     varying vec3 vWorldPosition;
     varying float vStress;
+    varying vec3 vNormal;
 
     uniform vec3 colorBase;
     uniform vec3 colorTip;
@@ -279,31 +284,35 @@ export const grassFragmentShader = `
         // Basic Gradient
         vec3 color = mix(colorBase, colorTip, vBend);
 
-        // Stress visualization: Lighter where bent
-        color = mix(color, vec3(1.0, 1.0, 0.5), vStress * 0.8);
+        // Stress visualization
+        color = mix(color, vec3(0.9, 0.9, 0.2), vStress * 0.6);
 
         // Lighting
-        vec3 normal = normalize(cross(dFdx(vWorldPosition), dFdy(vWorldPosition)));
+        vec3 normal = normalize(vNormal);
+        // Ensure double sided lighting looks okay
+        if (!gl_FrontFacing) normal = -normal;
+
         vec3 lightDir = normalize(sunPosition);
         
         // Diffuse
         float diff = max(dot(normal, lightDir), 0.0);
         
-        // Ambient
-        vec3 ambient = vec3(0.2);
+        // Ambient (Brighter)
+        vec3 ambient = vec3(0.4);
 
-        // Subsurface Scattering (Backlighting)
+        // Subsurface Scattering (Fake)
         vec3 viewDir = normalize(cameraPosition - vWorldPosition);
         float sss = max(dot(viewDir, -lightDir), 0.0);
-        sss = pow(sss, 4.0) * 1.5; 
-        sss *= vBend; 
+        sss = pow(sss, 2.0) * 1.0; 
+        sss *= vBend; // More SSS at tips
 
         // Specular
         vec3 halfVec = normalize(lightDir + viewDir);
         float spec = max(dot(normal, halfVec), 0.0);
-        spec = pow(spec, 32.0) * 0.2;
+        spec = pow(spec, 16.0) * 0.3;
 
-        vec3 lighting = ambient + (vec3(1.0) * diff) + (vec3(0.9, 1.0, 0.2) * sss) + spec;
+        // Combine
+        vec3 lighting = ambient + (vec3(1.0, 0.95, 0.8) * diff) + (vec3(0.5, 0.8, 0.2) * sss) + spec;
         
         vec3 finalColor = color * lighting;
 

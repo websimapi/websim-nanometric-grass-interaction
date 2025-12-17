@@ -36,7 +36,8 @@ export class GrassSystem {
         const velUniforms = this.velocityVariable.material.uniforms;
         velUniforms.time = { value: 0.0 };
         velUniforms.delta = { value: 0.0 };
-        velUniforms.handJoints = { value: new Array(10).fill(new THREE.Vector3()) };
+        // FIX: Create distinct Vector3 instances for each array element
+        velUniforms.handJoints = { value: new Array(10).fill().map(() => new THREE.Vector3()) };
         velUniforms.handRadii = { value: new Array(10).fill(0.0) };
         velUniforms.pinchStrength = { value: [0, 0] };
         velUniforms.pinchPosition = { value: [new THREE.Vector3(), new THREE.Vector3()] };
@@ -91,15 +92,17 @@ export class GrassSystem {
         });
 
         this.mesh = new THREE.InstancedMesh(geometry, this.material, this.COUNT);
-        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // Static usually, but we might move patch
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.mesh.frustumCulled = false; // FIX: Prevent culling as vertices are displaced by shader
 
         const dummy = new THREE.Object3D();
-        const colorAttribute = new Float32Array(this.COUNT * 3); // Hijacking color for UV mapping
+        const simUvAttribute = new Float32Array(this.COUNT * 3); // UV mapping for simulation texture
 
         for (let i = 0; i < this.COUNT; i++) {
             // Distribute in a 4x4m area
-            const x = (i % this.WIDTH) / this.WIDTH;
-            const y = Math.floor(i / this.WIDTH) / this.WIDTH;
+            // FIX: Offset by 0.5 to sample pixel center
+            const x = (i % this.WIDTH + 0.5) / this.WIDTH;
+            const y = (Math.floor(i / this.WIDTH) + 0.5) / this.WIDTH;
             
             // World Position
             dummy.position.set(
@@ -117,16 +120,16 @@ export class GrassSystem {
             dummy.updateMatrix();
             this.mesh.setMatrixAt(i, dummy.matrix);
 
-            // Pass UV coordinates for GPGPU lookup via InstanceColor
-            colorAttribute[i*3+0] = x;
-            colorAttribute[i*3+1] = y;
-            colorAttribute[i*3+2] = 0;
+            // Pass UV coordinates for GPGPU lookup via custom attribute
+            simUvAttribute[i*3+0] = x;
+            simUvAttribute[i*3+1] = y;
+            simUvAttribute[i*3+2] = 0;
         }
 
         this.mesh.instanceMatrix.needsUpdate = true;
         
-        // Add attribute manually since Three.js helper does it for Color
-        this.mesh.geometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(colorAttribute, 3));
+        // Add custom attribute 'simUv'
+        this.mesh.geometry.setAttribute('simUv', new THREE.InstancedBufferAttribute(simUvAttribute, 3));
 
         this.scene.add(this.mesh);
     }
